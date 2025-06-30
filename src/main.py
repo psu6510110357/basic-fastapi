@@ -40,6 +40,15 @@ def update_item(item_id: int, item: Item):
     }
 
 
+@app.patch("/items/{item_id}")
+def partial_update_item(item_id: int, item: Item):
+    return {
+        "item_id": item_id,
+        "item_name": item.name,
+        "item_description": item.description,
+    }
+
+
 @app.delete("/items/{item_id}")
 def delete_item(item_id: int):
     return {"message": f"Item {item_id} deleted"}
