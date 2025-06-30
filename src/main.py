@@ -40,6 +40,11 @@ def update_item(item_id: int, item: Item):
     }
 
 
+@app.delete("/items/{item_id}")
+def delete_item(item_id: int):
+    return {"message": f"Item {item_id} deleted"}
+
+
 @app.get("/users/me")
 async def read_user_me():
     return {"user_id": "the current user"}
