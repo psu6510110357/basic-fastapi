@@ -69,18 +69,38 @@ async def read_item(item_id: UUID, session: Session = Depends(get_session)):
     return item
 
 
-@app.patch("/items/{item_id}")
-def partial_update_item(item_id: int, item: Item):
-    return {
-        "item_id": item_id,
-        "item_name": item.name,
-        "item_description": item.description,
-    }
+@app.put("/items/{item_id}", response_model=Item)
+async def update_item(
+    item_id: UUID, item: Item, session: Session = Depends(get_session)
+):
+    db_item = session.get(Item, item_id)
+    if not db_item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
+        )
+
+    item_data = item.model_dump(exclude_unset=True, exclude={"id"})
+    for key, value in item_data.items():
+        setattr(db_item, key, value)
+
+    session.add(db_item)
+    session.commit()
+    session.refresh(db_item)
+    return db_item
 
 
-@app.delete("/items/{item_id}")
-def delete_item(item_id: int):
-    return {"message": f"Item {item_id} deleted"}
+@app.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_item(
+    item_id: UUID, session: Session = Depends(get_session)
+):
+    item = session.get(Item, item_id)
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
+        )
+    session.delete(item)
+    session.commit()
+    return {"ok": True}
 
 
 @app.get("/users/me")
