@@ -1,24 +1,20 @@
 # main.py
 
-from contextlib import asynccontextmanager
 from enum import Enum
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI
 import os
 from dotenv import load_dotenv
-from sqlmodel import Field, SQLModel, Session, create_engine, select
+from sqlmodel import Field, SQLModel, create_engine
 
 load_dotenv()
 
 
 class Item(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
-    description: Optional[str] = None
-    price: float = Field(gt=0, description="Price must be greater than zero")
-    tax: Optional[float] = Field(
-        default=None, ge=0, description="Tax must be non-negative"
-    )
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
 
 
 database_url = os.getenv("DATABASE_URL")
@@ -27,28 +23,10 @@ if database_url is None:
 
 engine = create_engine(database_url, echo=True)
 
-
-def create_db_and_tables():
-    print("Creating database tables...")
-    SQLModel.metadata.create_all(engine)
-    print("Database tables created (if they didn't exist).")
+SQLModel.metadata.create_all(engine)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    create_db_and_tables()
-    yield
-    print("Application shutting down.")
-
-
-app = FastAPI(
-    lifespan=lifespan,
-)
-
-
-def get_session():
-    with Session(engine) as session:
-        yield session
+app = FastAPI()
 
 
 @app.get("/")
@@ -56,88 +34,37 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.post("/items/", response_model=Item, status_code=status.HTTP_201_CREATED)
-def create_item(item: Item, session: Session = Depends(get_session)):
-    session.add(item)
-    session.commit()
-    session.refresh(item)
-    return item
+@app.post("/items/")
+def create_item(item: Item):
+    return {"item_name": item.name, "item_description": item.description}
 
 
-@app.get("/items/", response_model=List[Item])
-def read_items(
-    session: Session = Depends(get_session),
-    offset: int = 0,
-    limit: int = Field(default=100, le=100),
-):
-    items = session.exec(select(Item).offset(offset).limit(limit)).all()
-    return items
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+    return {"item_id": item_id}
 
 
-@app.get("/items/{item_id}", response_model=Item)
-def read_item(item_id: int, session: Session = Depends(get_session)):
-    item = session.get(Item, item_id)
-    if not item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Item with ID {item_id} not found",
-        )
-    return item
+@app.put("/items/{item_id}")
+def update_item(item_id: int, item: Item):
+    return {
+        "item_id": item_id,
+        "item_name": item.name,
+        "item_description": item.description,
+    }
 
 
-@app.put("/items/{item_id}", response_model=Item)
-def update_item(item_id: int, item: Item, session: Session = Depends(get_session)):
-    db_item = session.get(Item, item_id)
-    if not db_item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Item with ID {item_id} not found",
-        )
-
-    item_data = item.model_dump(exclude_unset=True)
-    for key, value in item_data.items():
-        setattr(db_item, key, value)
-
-    session.add(db_item)
-    session.commit()
-    session.refresh(db_item)
-    return db_item
+@app.patch("/items/{item_id}")
+def partial_update_item(item_id: int, item: Item):
+    return {
+        "item_id": item_id,
+        "item_name": item.name,
+        "item_description": item.description,
+    }
 
 
-@app.patch("/items/{item_id}", response_model=Item)
-def partial_update_item(
-    item_id: int, item: Item, session: Session = Depends(get_session)
-):
-    db_item = session.get(Item, item_id)
-    if not db_item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Item with ID {item_id} not found",
-        )
-
-    item_data = item.model_dump(exclude_unset=True)
-
-    for key, value in item_data.items():
-        setattr(db_item, key, value)
-
-    session.add(db_item)
-    session.commit()
-    session.refresh(db_item)
-    return db_item
-
-
-@app.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_item(item_id: int, session: Session = Depends(get_session)):
-    item = session.get(Item, item_id)
-    if not item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Item with ID {item_id} not found",
-        )
-
-    session.delete(item)
-    session.commit()
-    return
+@app.delete("/items/{item_id}")
+def delete_item(item_id: int):
+    return {"message": f"Item {item_id} deleted"}
 
 
 @app.get("/users/me")
