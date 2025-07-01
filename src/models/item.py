@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import ClassVar, Optional
 from uuid import UUID, uuid4
 from pydantic import ConfigDict
 from sqlmodel import Field, SQLModel
@@ -11,7 +11,7 @@ class Item(SQLModel, table=True):
     price: float
     tax: Optional[float] = None
 
-    json_schema_extra = {
+    json_schema_extra: ClassVar[dict] = {
         "example": {
             "name": "Super Widget",
             "description": "A very useful widget.",

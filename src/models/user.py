@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import ClassVar, Optional
 from uuid import UUID, uuid4
 from sqlmodel import Field, SQLModel
 
@@ -10,7 +10,7 @@ class User(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     full_name: Optional[str] = None
 
-    json_schema_extra = {
+    json_schema_extra: ClassVar[dict] = {
         "example": {
             "username": "johndoe",
             "email": "john.doe@example.com",
