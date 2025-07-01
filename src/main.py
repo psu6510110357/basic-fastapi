@@ -1,10 +1,10 @@
 # main.py
 
 from enum import Enum
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, status
 import os
 from dotenv import load_dotenv
-from sqlmodel import Field, SQLModel, create_engine
+from sqlmodel import Field, SQLModel, Session, create_engine
 
 load_dotenv()
 
@@ -29,14 +29,22 @@ SQLModel.metadata.create_all(engine)
 app = FastAPI()
 
 
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 
-@app.post("/items/")
-def create_item(item: Item):
-    return {"item_name": item.name, "item_description": item.description}
+@app.post("/items/", response_model=Item, status_code=status.HTTP_201_CREATED)
+def create_item(item: Item, session: Session = Depends(get_session)):
+    session.add(item)
+    session.commit()
+    session.refresh(item) 
+    return item
 
 
 @app.get("/items/{item_id}")
