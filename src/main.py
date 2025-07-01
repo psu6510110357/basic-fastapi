@@ -2,7 +2,8 @@
 
 from enum import Enum
 from typing import List
-from fastapi import Depends, FastAPI, Query, status
+from uuid import UUID, uuid4
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 import os
 from dotenv import load_dotenv
 from sqlmodel import Field, SQLModel, Session, create_engine, select
@@ -11,7 +12,7 @@ load_dotenv()
 
 
 class Item(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
+    id: UUID | None = Field(default_factory=uuid4, primary_key=True)
     name: str
     description: str | None = None
     price: float
@@ -51,20 +52,21 @@ def create_item(item: Item, session: Session = Depends(get_session)):
 @app.get("/items/", response_model=List[Item])
 async def read_items(
     session: Session = Depends(get_session),
-    offset: int = Query(default=0),  # Using Query for query parameters
-    limit: int = Query(default=100, le=100),  # Using Query for query parameters
+    offset: int = Query(default=0), 
+    limit: int = Query(default=100, le=100),
 ):
     items = session.exec(select(Item).offset(offset).limit(limit)).all()
     return items
 
 
-@app.put("/items/{item_id}")
-def update_item(item_id: int, item: Item):
-    return {
-        "item_id": item_id,
-        "item_name": item.name,
-        "item_description": item.description,
-    }
+@app.get("/items/{item_id}", response_model=Item)
+async def read_item(item_id: UUID, session: Session = Depends(get_session)):
+    item = session.get(Item, item_id)
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
+        )
+    return item
 
 
 @app.patch("/items/{item_id}")
