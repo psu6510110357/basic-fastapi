@@ -1,10 +1,11 @@
 # main.py
 
 from enum import Enum
-from fastapi import Depends, FastAPI, status
+from typing import List
+from fastapi import Depends, FastAPI, Query, status
 import os
 from dotenv import load_dotenv
-from sqlmodel import Field, SQLModel, Session, create_engine
+from sqlmodel import Field, SQLModel, Session, create_engine, select
 
 load_dotenv()
 
@@ -43,13 +44,18 @@ async def root():
 def create_item(item: Item, session: Session = Depends(get_session)):
     session.add(item)
     session.commit()
-    session.refresh(item) 
+    session.refresh(item)
     return item
 
 
-@app.get("/items/{item_id}")
-async def read_item(item_id: int):
-    return {"item_id": item_id}
+@app.get("/items/", response_model=List[Item])
+async def read_items(
+    session: Session = Depends(get_session),
+    offset: int = Query(default=0),  # Using Query for query parameters
+    limit: int = Query(default=100, le=100),  # Using Query for query parameters
+):
+    items = session.exec(select(Item).offset(offset).limit(limit)).all()
+    return items
 
 
 @app.put("/items/{item_id}")
