@@ -3,8 +3,8 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status, Depends
 from sqlmodel import Session, select
 
-from src.models.item import Item
-from src.core.database import get_session
+from app.models.item import Item
+from app.core.database import get_session
 
 router = APIRouter()
 
