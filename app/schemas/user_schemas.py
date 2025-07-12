@@ -12,7 +12,21 @@ class CreateUser(BaseModel):
 
 
 class UpdatedUser(BaseModel):
-    roles: list[str]
+    email: str | None = Field(
+        None, json_schema_extra={"example": "updated@email.local"}
+    )
+    username: str | None = Field(
+        None, json_schema_extra={"example": "updated_username"}
+    )
+    first_name: str | None = Field(
+        None, json_schema_extra={"example": "UpdatedFirstname"}
+    )
+    last_name: str | None = Field(
+        None, json_schema_extra={"example": "UpdatedLastname"}
+    )
+    password: str | None = Field(
+        None, json_schema_extra={"example": "updated_password"}
+    )
 
 
 class UserResponse(BaseModel):

@@ -5,7 +5,12 @@ import uuid
 
 from app.models.user_model import DBUser as User
 from app.core.database import get_session
-from app.schemas.user_schemas import CreateUser, UserResponse, UserListResponse
+from app.schemas.user_schemas import (
+    CreateUser,
+    UpdatedUser,
+    UserResponse,
+    UserListResponse,
+)
 
 router = APIRouter(tags=["users"])
 
@@ -74,7 +79,7 @@ async def read_user(user_id: UUID, session: Session = Depends(get_session)):
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
-    user_id: UUID, user: User, session: Session = Depends(get_session)
+    user_id: UUID, user: UpdatedUser, session: Session = Depends(get_session)
 ):
     db_user = session.get(User, user_id)
     if not db_user:
