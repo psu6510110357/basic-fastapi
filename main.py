@@ -13,9 +13,9 @@ from contextlib import asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
+    await init_db()  # Initialize the database engine
     await drop_db_and_tables()
     await create_db_and_tables()
-    await init_db()
     yield
     # Shutdown
     await close_db()
