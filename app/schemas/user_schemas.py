@@ -1,5 +1,5 @@
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 def to_camel_case(string: str) -> str:
@@ -14,9 +14,9 @@ class CreateUser(BaseModel):
     last_name: str
     password: str  # Added password field
 
-    class Config:
-        alias_generator = to_camel_case
-        allow_population_by_field_name = True
+    model_config = ConfigDict(
+        validate_by_name=True, alias_generator=to_camel_case, populate_by_name=True
+    )
 
 
 class UpdatedUser(BaseModel):
@@ -25,9 +25,9 @@ class UpdatedUser(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
 
-    class Config:
-        alias_generator = to_camel_case
-        allow_population_by_field_name = True
+    model_config = ConfigDict(
+        validate_by_name=True, alias_generator=to_camel_case, populate_by_name=True
+    )
 
 
 class UserResponse(BaseModel):
@@ -37,10 +37,9 @@ class UserResponse(BaseModel):
     first_name: str
     last_name: str
 
-    class Config:
-        alias_generator = to_camel_case
-        allow_population_by_field_name = True
-        populate_by_name = True  # Allow snake_case fields for initialization
+    model_config = ConfigDict(
+        validate_by_name=True, populate_by_name=True, alias_generator=to_camel_case
+    )
 
 
 class UserListResponse(BaseModel):
