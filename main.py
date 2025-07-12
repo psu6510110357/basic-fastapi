@@ -1,17 +1,32 @@
 from fastapi import FastAPI
-from app.core.database import create_db_and_tables
+from app.core.database import create_db_and_tables, drop_db_and_tables, init_db, close_db
 from app.routers.routers import router
+from contextlib import asynccontextmanager
+
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager."""
+    # Startup
+    await init_db()
+    yield
+    # Shutdown
+    await close_db()
+
 
 app = FastAPI(
     title="My FastAPI Application",
     description="A simple API for managing items and users.",
     version="1.0.0",
+    lifespan=lifespan
 )
 
 
 @app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
+async def on_startup():
+    await drop_db_and_tables()
+    await create_db_and_tables()
 
 
 @app.get("/")

@@ -11,8 +11,8 @@ dependencies = [
     "black (>=25.1.0,<26.0.0)",
     "ruff (>=0.12.1,<0.13.0)",
     "sqlmodel (>=0.0.24,<0.0.25)",
-    "psycopg2 (>=2.9.10,<3.0.0)",
     "bcrypt (>=4.3.0,<5.0.0)",
+    "asyncpg (>=0.30.0,<0.31.0)",
 ]
 
 [tool.poetry]
@@ -22,3 +22,4 @@ packages = [{include = "basic_fastapi", from = "app"}]
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+

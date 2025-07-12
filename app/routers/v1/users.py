@@ -1,5 +1,7 @@
+from typing import Annotated
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status, Depends
+from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import Session, select
 import uuid
 
@@ -16,18 +18,19 @@ router = APIRouter(tags=["users"])
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def create_user(user: CreateUser, session: Session = Depends(get_session)):
-    existing_user_by_username = session.exec(
-        select(User).where(User.username == user.username)
-    ).first()
+async def create_user(
+    user: CreateUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> UserResponse:
+    result = await session.exec(select(User).where(User.username == user.username))
+    existing_user_by_username = result.first()
     if existing_user_by_username:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User with this username already exists",
         )
-    existing_user_by_email = session.exec(
-        select(User).where(User.email == user.email)
-    ).first()
+    result = await session.exec(select(User).where(User.email == user.email))
+    existing_user_by_email = result.first()
     if existing_user_by_email:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -36,8 +39,8 @@ def create_user(user: CreateUser, session: Session = Depends(get_session)):
 
     db_user = User(**user.model_dump())
     session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
+    await session.commit()
+    await session.refresh(db_user)
     return UserResponse(
         id=db_user.id or uuid.uuid4(),  # Generate a valid UUID if id is None
         username=db_user.username,
