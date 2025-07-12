@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status, Depends
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import Session, select
+from sqlmodel import select
 import uuid
 
 from app.models.user_model import DBUser as User
@@ -52,11 +52,12 @@ async def create_user(
 
 @router.get("/", response_model=UserListResponse)
 async def read_users(
-    session: Session = Depends(get_session),
+    session: Annotated[AsyncSession, Depends(get_session)],
     offset: int = Query(default=0),
     limit: int = Query(default=100, le=100),
-):
-    users = session.exec(select(User).offset(offset).limit(limit)).all()
+) -> UserListResponse:
+    result = await session.exec(select(User).offset(offset).limit(limit))
+    users = result.all()
     user_responses = [
         UserResponse(
             id=user.id,  # Assumes user.id is always a UUID
@@ -71,20 +72,30 @@ async def read_users(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def read_user(user_id: UUID, session: Session = Depends(get_session)):
-    user = session.get(User, user_id)
+async def read_user(
+    user_id: UUID, session: Annotated[AsyncSession, Depends(get_session)]
+) -> UserResponse:
+    user = await session.get(User, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
-    return user
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+    )
 
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
-    user_id: UUID, user: UpdatedUser, session: Session = Depends(get_session)
-):
-    db_user = session.get(User, user_id)
+    user_id: UUID,
+    user: UpdatedUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> UserResponse:
+    db_user = await session.get(User, user_id)
     if not db_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
@@ -95,18 +106,26 @@ async def update_user(
         setattr(db_user, key, value)
 
     session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
-    return db_user
+    await session.commit()
+    await session.refresh(db_user)
+    return UserResponse(
+        id=db_user.id,
+        username=db_user.username,
+        email=db_user.email,
+        first_name=db_user.first_name,
+        last_name=db_user.last_name,
+    )
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_id: UUID, session: Session = Depends(get_session)):
-    user = session.get(User, user_id)
+async def delete_user(
+    user_id: UUID, session: Annotated[AsyncSession, Depends(get_session)]
+) -> dict:
+    user = await session.get(User, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
-    session.delete(user)
-    session.commit()
+    await session.delete(user)
+    await session.commit()
     return {"ok": True}
