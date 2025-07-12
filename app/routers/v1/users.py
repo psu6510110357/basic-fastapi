@@ -2,16 +2,16 @@ from typing import Annotated
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status, Depends
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, func
 import uuid
 
 from app.models.user_model import DBUser as User
 from app.core.database import get_session
 from app.schemas.user_schemas import (
     CreateUser,
+    ReadUsersResponse,
     UpdatedUser,
     UserResponse,
-    UserListResponse,
 )
 
 router = APIRouter(tags=["users"])
@@ -42,7 +42,9 @@ async def create_user(
     await session.commit()
     await session.refresh(db_user)
     return UserResponse(
-        id=db_user.id or uuid.uuid4(),  # Generate a valid UUID if id is None
+        id=str(
+            db_user.id or uuid.uuid4()
+        ),  # Generate a valid UUID string if id is None
         username=db_user.username,
         email=db_user.email,
         first_name=db_user.first_name,
@@ -50,25 +52,35 @@ async def create_user(
     )
 
 
-@router.get("/", response_model=UserListResponse)
+@router.get("/", response_model=ReadUsersResponse)
 async def read_users(
     session: Annotated[AsyncSession, Depends(get_session)],
     offset: int = Query(default=0),
     limit: int = Query(default=100, le=100),
-) -> UserListResponse:
+) -> ReadUsersResponse:
+    total_count_result = await session.exec(select(func.count()).select_from(User))
+    total_count = total_count_result.one()
+
     result = await session.exec(select(User).offset(offset).limit(limit))
     users = result.all()
     user_responses = [
         UserResponse(
-            id=user.id,  # Assumes user.id is always a UUID
+            id=str(user.id),
             username=user.username,
             email=user.email,
-            first_name=user.first_name,
-            last_name=user.last_name,
+            first_name=user.first_name,  # Use snake_case for initialization
+            last_name=user.last_name,  # Use snake_case for initialization
         )
         for user in users
     ]
-    return UserListResponse(users=user_responses)
+
+    has_more = offset + limit < total_count
+
+    return ReadUsersResponse(
+        users=user_responses,
+        total_count=total_count,
+        has_more=has_more,
+    )
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -81,7 +93,7 @@ async def read_user(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
     return UserResponse(
-        id=user.id,
+        id=str(user.id),
         username=user.username,
         email=user.email,
         first_name=user.first_name,
@@ -109,7 +121,7 @@ async def update_user(
     await session.commit()
     await session.refresh(db_user)
     return UserResponse(
-        id=db_user.id,
+        id=(str(db_user.id)),
         username=db_user.username,
         email=db_user.email,
         first_name=db_user.first_name,
@@ -120,7 +132,7 @@ async def update_user(
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: UUID, session: Annotated[AsyncSession, Depends(get_session)]
-) -> dict:
+) -> None:
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(
@@ -128,4 +140,3 @@ async def delete_user(
         )
     await session.delete(user)
     await session.commit()
-    return {"ok": True}

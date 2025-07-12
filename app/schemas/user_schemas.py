@@ -1,41 +1,53 @@
 from typing import List
-from pydantic import BaseModel, Field
-import uuid
+from pydantic import BaseModel
+
+
+def to_camel_case(string: str) -> str:
+    parts = string.split("_")
+    return parts[0] + "".join(word.capitalize() for word in parts[1:])
 
 
 class CreateUser(BaseModel):
-    email: str = Field(..., json_schema_extra={"example": "admin@email.local"})
-    username: str = Field(..., json_schema_extra={"example": "admin"})
-    first_name: str = Field(..., json_schema_extra={"example": "Firstname"})
-    last_name: str = Field(..., json_schema_extra={"example": "Lastname"})
-    password: str = Field(..., json_schema_extra={"example": "password"})
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    password: str  # Added password field
+
+    class Config:
+        alias_generator = to_camel_case
+        allow_population_by_field_name = True
 
 
 class UpdatedUser(BaseModel):
-    email: str | None = Field(
-        None, json_schema_extra={"example": "updated@email.local"}
-    )
-    username: str | None = Field(
-        None, json_schema_extra={"example": "updated_username"}
-    )
-    first_name: str | None = Field(
-        None, json_schema_extra={"example": "UpdatedFirstname"}
-    )
-    last_name: str | None = Field(
-        None, json_schema_extra={"example": "UpdatedLastname"}
-    )
-    password: str | None = Field(
-        None, json_schema_extra={"example": "updated_password"}
-    )
+    username: str | None = None
+    email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+
+    class Config:
+        alias_generator = to_camel_case
+        allow_population_by_field_name = True
 
 
 class UserResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     username: str
     email: str
     first_name: str
     last_name: str
 
+    class Config:
+        alias_generator = to_camel_case
+        allow_population_by_field_name = True
+        populate_by_name = True  # Allow snake_case fields for initialization
+
 
 class UserListResponse(BaseModel):
     users: List[UserResponse]
+
+
+class ReadUsersResponse(BaseModel):
+    users: List[UserResponse]
+    total_count: int
+    has_more: bool
