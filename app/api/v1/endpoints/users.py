@@ -1,16 +1,17 @@
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status, Depends
 from sqlmodel import Session, select
+import uuid
 
 from app.models.user_model import DBUser as User
 from app.core.database import get_session
-from app.schemas.user import UserResponse, UserListResponse
+from app.schemas.user_schemas import CreateUser, UserResponse, UserListResponse
 
 router = APIRouter()
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def create_user(user: User, session: Session = Depends(get_session)):
+def create_user(user: CreateUser, session: Session = Depends(get_session)):
     existing_user_by_username = session.exec(
         select(User).where(User.username == user.username)
     ).first()
@@ -28,10 +29,17 @@ def create_user(user: User, session: Session = Depends(get_session)):
             detail="User with this email already exists",
         )
 
-    session.add(user)
+    db_user = User(**user.model_dump())
+    session.add(db_user)
     session.commit()
-    session.refresh(user)
-    return user
+    session.refresh(db_user)
+    return UserResponse(
+        id=db_user.id or uuid.uuid4(),  # Generate a valid UUID if id is None
+        username=db_user.username,
+        email=db_user.email,
+        first_name=db_user.first_name,
+        last_name=db_user.last_name,
+    )
 
 
 @router.get("/", response_model=UserListResponse)
@@ -43,7 +51,7 @@ async def read_users(
     users = session.exec(select(User).offset(offset).limit(limit)).all()
     user_responses = [
         UserResponse(
-            id=user.id or 0,  # Default to 0 if id is None
+            id=user.id,  # Assumes user.id is always a UUID
             username=user.username,
             email=user.email,
             first_name=user.first_name,

@@ -12,7 +12,8 @@ engine = create_engine(database_url, echo=True)
 
 
 def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
+    SQLModel.metadata.drop_all(engine)  # Drop all tables
+    SQLModel.metadata.create_all(engine)  # Create all tables
 
 
 def get_session():
