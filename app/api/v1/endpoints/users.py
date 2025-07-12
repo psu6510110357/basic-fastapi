@@ -1,15 +1,15 @@
-from typing import List
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status, Depends
 from sqlmodel import Session, select
 
-from app.models.user import User
+from app.models.user_model import DBUser as User
 from app.core.database import get_session
+from app.schemas.user import UserResponse, UserListResponse
 
 router = APIRouter()
 
 
-@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: User, session: Session = Depends(get_session)):
     existing_user_by_username = session.exec(
         select(User).where(User.username == user.username)
@@ -34,17 +34,27 @@ def create_user(user: User, session: Session = Depends(get_session)):
     return user
 
 
-@router.get("/", response_model=List[User])
+@router.get("/", response_model=UserListResponse)
 async def read_users(
     session: Session = Depends(get_session),
     offset: int = Query(default=0),
     limit: int = Query(default=100, le=100),
 ):
     users = session.exec(select(User).offset(offset).limit(limit)).all()
-    return users
+    user_responses = [
+        UserResponse(
+            id=user.id or 0,  # Default to 0 if id is None
+            username=user.username,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+        )
+        for user in users
+    ]
+    return UserListResponse(users=user_responses)
 
 
-@router.get("/{user_id}", response_model=User)
+@router.get("/{user_id}", response_model=UserResponse)
 async def read_user(user_id: UUID, session: Session = Depends(get_session)):
     user = session.get(User, user_id)
     if not user:
@@ -54,7 +64,7 @@ async def read_user(user_id: UUID, session: Session = Depends(get_session)):
     return user
 
 
-@router.put("/{user_id}", response_model=User)
+@router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: UUID, user: User, session: Session = Depends(get_session)
 ):
