@@ -7,7 +7,7 @@ from app.models.user_model import DBUser as User
 from app.core.database import get_session
 from app.schemas.user_schemas import CreateUser, UserResponse, UserListResponse
 
-router = APIRouter()
+router = APIRouter(tags=["users"])
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
