@@ -30,6 +30,7 @@ async def init_db():
         connect_args=connect_args,
     )
 
+    await drop_db_and_tables()
     await create_db_and_tables()
 
 
