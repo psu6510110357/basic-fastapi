@@ -1,7 +1,5 @@
 from fastapi import FastAPI
 from app.core.database import (
-    create_db_and_tables,
-    drop_db_and_tables,
     init_db,
     close_db,
 )
@@ -12,9 +10,7 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    await drop_db_and_tables()
-    await create_db_and_tables()
-    await init_db()
+    await init_db()  # This already handles drop, create, and init
     yield
     await close_db()
 

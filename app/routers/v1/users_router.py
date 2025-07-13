@@ -22,6 +22,7 @@ async def create_user(
     user: CreateUser,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> UserResponse:
+    # Check if username already exists
     result = await session.exec(select(User).where(User.username == user.username))
     existing_user_by_username = result.first()
     if existing_user_by_username:
@@ -29,6 +30,8 @@ async def create_user(
             status_code=status.HTTP_409_CONFLICT,
             detail="User with this username already exists",
         )
+
+    # Check if email already exists
     result = await session.exec(select(User).where(User.email == user.email))
     existing_user_by_email = result.first()
     if existing_user_by_email:
@@ -37,14 +40,32 @@ async def create_user(
             detail="User with this email already exists",
         )
 
-    db_user = User(**user.model_dump())
+    # Hash the password before storing
+    hashed_password = await User(
+        email=user.email,
+        username=user.username,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        password="",
+    ).get_encrypted_password(user.password)
+
+    db_user = User(
+        email=user.email,
+        username=user.username,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        password=hashed_password,  # Store hashed password
+        id=uuid.uuid4(),  # Generate UUID
+    )
+
+    # Save user to the database
     session.add(db_user)
     await session.commit()
     await session.refresh(db_user)
+
+    # Return the created user
     return UserResponse(
-        id=str(
-            db_user.id or uuid.uuid4()
-        ),  # Generate a valid UUID string if id is None
+        id=str(db_user.id),
         username=db_user.username,
         email=db_user.email,
         first_name=db_user.first_name,

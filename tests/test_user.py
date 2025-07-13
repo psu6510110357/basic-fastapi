@@ -1,7 +1,5 @@
 import pytest
 
-from .base import client, engine, session  # noqa: F401
-
 
 @pytest.fixture
 def user_data():

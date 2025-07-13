@@ -15,6 +15,7 @@ class BaseUser(BaseModel):
     username: str = pydantic.Field(json_schema_extra=dict(example="admin"))
     first_name: str = pydantic.Field(json_schema_extra=dict(example="Firstname"))
     last_name: str = pydantic.Field(json_schema_extra=dict(example="Lastname"))
+    status: str = pydantic.Field(json_schema_extra=dict(example="active"))
 
 
 class User(BaseUser):
@@ -27,8 +28,6 @@ class User(BaseUser):
     )
 
 
-
-
 class DBUser(BaseUser, SQLModel, table=True):
     id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
 
@@ -37,6 +36,7 @@ class DBUser(BaseUser, SQLModel, table=True):
     register_date: datetime.datetime = Field(default_factory=datetime.datetime.now)
     updated_date: datetime.datetime = Field(default_factory=datetime.datetime.now)
     last_login_date: datetime.datetime | None = Field(default=None)
+    status: str = Field(default="active")
 
     async def get_encrypted_password(self, plain_password):
         return bcrypt.hashpw(
@@ -50,3 +50,14 @@ class DBUser(BaseUser, SQLModel, table=True):
         return bcrypt.checkpw(
             plain_password.encode("utf-8"), self.password.encode("utf-8")
         )
+
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+    expires_in: int
+    expires_at: datetime.datetime
+    scope: str
+    issued_at: datetime.datetime
+    user_id: UUID
